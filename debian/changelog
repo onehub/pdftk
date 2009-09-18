@@ -1,7 +1,7 @@
 pdftk (1.41+dfsg-1) unstable; urgency=low
 
   * Adopted the package with agreement of the previous maintainer
-    - Thanks for your work Aurélien GÉRÔME! 
+    - Thanks for your work Aurélien GÉRÔME!
   * DFSG-repack and use extern libitext-java (Closes: #519466)
   * Support newer gcj (Closes: #470215, #514561, #534080, #533795, #538252)
   * Handle utf8 filenames (Closes: #258377, #504014, #504128)
