@@ -28,5 +28,3 @@ Description: tool for manipulating PDF documents
   - Burst a PDF document into single pages
   - Uncompress and re-compress page streams
   - Repair corrupted PDF (where possible)
- .
- Author: Sid Steward <ssteward@accesspdf.com>
