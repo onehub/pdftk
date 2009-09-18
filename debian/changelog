@@ -16,8 +16,8 @@ pdftk (1.41+dfsg-1) unstable; urgency=low
     - upstream uses GPL-2+ (not unversioned GPL)
   * Add patch: use mkstemp instead of tmpnam
   * Add upstream changelog
-  * Remove meaningless "useful" from short description and author-field from long
-    description
+  * Remove meaningless "useful" from short description and author-field from
+    long description
 
  -- Johann Felix Soden <johfel@gmx.de>  Sat, 05 Sep 2009 15:14:40 +0200
 
