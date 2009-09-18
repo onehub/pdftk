@@ -6,6 +6,8 @@ Build-Depends: debhelper (>= 7.0.50~), quilt (>=0.46-7~), gcj, libitext-java-gcj
 Standards-Version: 3.8.3
 Homepage: http://www.pdfhacks.com/pdftk/
 DM-Upload-Allowed: yes
+Vcs-Git: git://git.debian.org/git/collab-maint/pdftk.git
+Vcs-Browser: http://git.debian.org/?p=collab-maint/pdftk.git;a=summary
 
 Package: pdftk
 Architecture: any
