@@ -23,7 +23,7 @@ override_dh_auto_build:
 
 override_dh_auto_clean:
 	dh_quilt_patch
-	[ ! -f $(CURDIR)/pdftk/Makefile.Debian] || make -C $(CURDIR)/pdftk -f Makefile.Debian clean
+	[ ! -f $(CURDIR)/pdftk/Makefile.Debian ] || make -C $(CURDIR)/pdftk -f Makefile.Debian clean
 	rm -f $(CURDIR)/pdftk/$(GCJ_ITEXT_SO_NAME)
 	rm -rf $(CURDIR)/pdftk/pdftk
 	rm -f $(CURDIR)/classes
