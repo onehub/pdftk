@@ -7,8 +7,10 @@ pdftk (1.41+dfsg-2) unstable; urgency=low
   * Fix failing on pdf files with owner password:
     - change pdftk-use-internal-itext and support_utf8_filenames
       in debian/patches and refresh other patches
+  * Add uncompression support which was removed in 1.41+dfsg-1.
+    (Closes: #547910)
 
- -- Johann Felix Soden <johfel@gmx.de>  Sun, 20 Sep 2009 14:22:25 +0200
+ -- Johann Felix Soden <johfel@gmx.de>  Fri, 25 Sep 2009 11:54:04 +0200
 
 pdftk (1.41+dfsg-1) unstable; urgency=low
 
