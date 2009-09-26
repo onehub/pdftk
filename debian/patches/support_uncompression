@@ -1,3 +1,7 @@
+Description: Add support for compression for itext >= 2.1.5
+Author: Johann Felix Soden <johfel@gmx.de>
+Bug-Debian: http://bugs.debian.org/547910
+
 --- a/pdftk/pdftk.cc
 +++ b/pdftk/pdftk.cc
 @@ -42,11 +42,13 @@
