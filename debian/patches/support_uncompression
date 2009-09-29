@@ -83,7 +83,7 @@ Bug-Debian: http://bugs.debian.org/547910
  bool
  TK_Session::add_reader( InputPdf* input_pdf_p )
  {
-@@ -499,6 +552,7 @@
+@@ -505,6 +558,7 @@
  		return perm_all_k;
  	}
  	else if( strcmp( ss_copy, "uncompress" )== 0 ) {
@@ -91,7 +91,7 @@ Bug-Debian: http://bugs.debian.org/547910
  		return filt_uncompress_k;
  	}
  	else if( strcmp( ss_copy, "compress" )== 0 ) {
-@@ -2041,14 +2095,15 @@
+@@ -2059,14 +2113,15 @@
  				output_doc_p->addCreator( jv_creator_p );
  
  				// un/compress output streams?
@@ -111,7 +111,7 @@ Bug-Debian: http://bugs.debian.org/547910
  
  				// encrypt output?
  				if( m_output_encryption_strength!= none_enc ||
-@@ -2118,10 +2173,13 @@
+@@ -2136,10 +2191,13 @@
  
  								//
  								if( m_output_uncompress_b ) {
@@ -125,7 +125,7 @@ Bug-Debian: http://bugs.debian.org/547910
  								}
  
  								// DF rotate
-@@ -2196,11 +2254,14 @@
+@@ -2214,11 +2272,14 @@
  						// Absent from itext-2.1.4
  // 						writer_p->filterStreams= true;
  // 						writer_p->compressStreams= false;
@@ -140,7 +140,7 @@ Bug-Debian: http://bugs.debian.org/547910
  					}
  
  					// encrypt output?
-@@ -2429,16 +2490,19 @@
+@@ -2450,16 +2511,19 @@
  
  				// un/compress output streams?
  				if( m_output_uncompress_b ) {
