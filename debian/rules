@@ -39,5 +39,5 @@ override_dh_auto_install:
 	dh_auto_install
 
 get-orig-source:
-	uscan --force-download --repack --rename --destdir `pwd`
-
+	cd $(dir $(firstword $(MAKEFILE_LIST))).. && \
+	uscan --force-download --repack --rename --destdir $(CURDIR)
