@@ -22,9 +22,11 @@ override_dh_auto_build:
 	$(MAKE) -C $(CURDIR)/pdftk -f Makefile.Debian GCJ_ITEXT_SO=$(GCJ_ITEXT_SO_NAME) VERSUFF=$(VERSUFF)
 
 override_dh_auto_clean:
-	[ ! -f $(CURDIR)/pdftk/Makefile.Debian ] || make -C $(CURDIR)/pdftk -f Makefile.Debian clean
+	# do not call clean target if source is unpatched
+	grep -q "libgcj_local" $(CURDIR)/pdftk/Makefile.Base || make -C $(CURDIR)/pdftk -f Makefile.Debian clean
 	rm -f $(CURDIR)/pdftk/$(GCJ_ITEXT_SO_NAME)
 	rm -rf $(CURDIR)/pdftk/pdftk
+	rm -rf $(CURDIR)/pdftk/*.o
 	rm -f $(CURDIR)/classes
 	rm -rf $(CURDIR)/java_libs2
 	dh_auto_clean
