@@ -28,6 +28,9 @@ override_dh_auto_build:
 override_dh_auto_clean:
 	# do not call clean target if source is unpatched
 	grep -q "libgcj_local" $(CURDIR)/pdftk/Makefile.Base || make -C $(CURDIR)/pdftk -f Makefile.Debian clean
+	@[ -n "$(GCJ_ITEXT_SO_NAME)" ] || \
+		echo "*** itext-*.so not found in libitext-java-gcj -> No gcj native code support for this arch."
+	@[ -n "$(GCJ_ITEXT_SO_NAME)" ] || exit 1
 	rm -f $(CURDIR)/pdftk/$(GCJ_ITEXT_SO_NAME)
 	rm -rf $(CURDIR)/pdftk/pdftk
 	rm -rf $(CURDIR)/pdftk/*.o
