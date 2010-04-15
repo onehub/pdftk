@@ -13,3 +13,4 @@ fix_compiler_warnings
 support_uncompression
 ignore_locale
 improve_error_message_on_invalid_pdf
+fix_return_code
