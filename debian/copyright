@@ -1,10 +1,10 @@
 Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=59
 Name: pdftk
 Maintainer: Johann Felix Soden <johfel@gmx.de>
-Source: http://www.pdfhacks.com/pdftk/
+Source: http://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/
 
 Files: *
-Copyrigth: 2003-2006, Sid Steward <ssteward@accesspdf.com>
+Copyrigth: 2003-2006, Sid Steward <sid.steward at pdflabs dot com>
 License: GPL-2+
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
