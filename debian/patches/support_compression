@@ -5,7 +5,7 @@ Bug-Debian: http://bugs.debian.org/547910
 
 --- a/pdftk/pdftk.cc
 +++ b/pdftk/pdftk.cc
-@@ -42,11 +42,13 @@
+@@ -51,11 +51,13 @@
  #include <java/lang/String.h>
  #include <java/io/IOException.h>
  #include <java/io/PrintStream.h>
@@ -19,7 +19,7 @@ Bug-Debian: http://bugs.debian.org/547910
  
  #include "com/lowagie/text/Document.h"
  #include "com/lowagie/text/Rectangle.h"
-@@ -76,8 +78,10 @@
+@@ -85,8 +87,10 @@
  #include "com/lowagie/text/pdf/PdfIndirectObject.h"
  #include "com/lowagie/text/pdf/PdfFileSpecification.h"
  #include "com/lowagie/text/pdf/PdfBoolean.h"
@@ -30,8 +30,8 @@ Bug-Debian: http://bugs.debian.org/547910
  
  using namespace std;
  
-@@ -155,6 +159,159 @@
- 	}
+@@ -176,6 +180,159 @@
+ 	*/
  }
  
 +void change_compression_stream(itext::PRStream* stream, bool compress_mode )
@@ -188,9 +188,9 @@ Bug-Debian: http://bugs.debian.org/547910
 +
 +
  bool
- TK_Session::add_reader( InputPdf* input_pdf_p )
- {
-@@ -505,9 +662,11 @@
+ TK_Session::add_reader( InputPdf* input_pdf_p,
+ 												bool keep_artifacts_b= false )
+@@ -537,9 +694,11 @@
  		return perm_all_k;
  	}
  	else if( strcmp( ss_copy, "uncompress" )== 0 ) {
@@ -202,7 +202,7 @@ Bug-Debian: http://bugs.debian.org/547910
  		return filt_compress_k;
  	}
  	else if( strcmp( ss_copy, "flatten" )== 0 ) {
-@@ -2059,14 +2218,15 @@
+@@ -2103,14 +2262,15 @@
  				output_doc_p->addCreator( jv_creator_p );
  
  				// un/compress output streams?
@@ -222,7 +222,7 @@ Bug-Debian: http://bugs.debian.org/547910
  
  				// encrypt output?
  				if( m_output_encryption_strength!= none_enc ||
-@@ -2136,10 +2296,14 @@
+@@ -2180,10 +2340,14 @@
  
  								//
  								if( m_output_uncompress_b ) {
@@ -237,7 +237,7 @@ Bug-Debian: http://bugs.debian.org/547910
  								}
  
  								// DF rotate
-@@ -2211,14 +2375,18 @@
+@@ -2262,14 +2426,18 @@
  
  					// un/compress output streams?
  					if( m_output_uncompress_b ) {
@@ -256,7 +256,7 @@ Bug-Debian: http://bugs.debian.org/547910
  					}
  
  					// encrypt output?
-@@ -2450,16 +2618,20 @@
+@@ -2511,16 +2679,20 @@
  
  				// un/compress output streams?
  				if( m_output_uncompress_b ) {

@@ -3,19 +3,19 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
 
 --- a/pdftk/attachments.cc
 +++ b/pdftk/attachments.cc
-@@ -51,7 +51,11 @@
+@@ -56,7 +56,11 @@
  
  #include "com/lowagie/text/Document.h"
  #include "com/lowagie/text/Rectangle.h"
 +// Ewww, PdfName has a field called NULL.
 +#undef NULL
  #include "com/lowagie/text/pdf/PdfName.h"
-+#define NULL __null
++#define NULL __nul
 +
  #include "com/lowagie/text/pdf/PdfString.h"
  #include "com/lowagie/text/pdf/PdfNumber.h"
  #include "com/lowagie/text/pdf/PdfArray.h"
-@@ -148,8 +152,8 @@
+@@ -151,8 +155,8 @@
  
  					itext::Rectangle* crop_box_p= 
  						input_reader_p->getCropBox( m_input_attach_file_pagenum );
@@ -26,7 +26,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  
  					itext::PdfArray* annots_p= (itext::PdfArray*)
  						input_reader_p->getPdfObject( page_p->get( itext::PdfName::ANNOTS ) );
-@@ -187,11 +191,11 @@
+@@ -190,11 +194,11 @@
  								string filename= drop_path(*vit);
  
  								// wrap our location over page bounds, if needed
@@ -42,75 +42,9 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  								}
  
  								itext::Rectangle* annot_bbox_p= 
---- a/pdftk/Makefile.Base
-+++ b/pdftk/Makefile.Base
-@@ -15,34 +15,12 @@
- # them into fonts.a resulted in none of these resources appearing in pdftk
- # (on MinGW gcj 3.4.1)
- #
--itext_libs= \
--$(java_libs_root)/com/lowagie/text/pdf/pdf.a \
--$(java_libs_root)/com/lowagie/text/text.a \
--$(java_libs_root)/com/lowagie/text/pdf/pdf.a \
--$(java_libs_root)/com/lowagie/text/pdf/codec/codec.a \
--$(java_libs_root)/com/lowagie/text/pdf/codec/wmf/wmf.a \
--$(java_libs_root)/com/lowagie/text/pdf/fonts/fonts.a \
--$(java_libs_root)/com/lowagie/text/markup/markup.a \
--$(java_libs_root)/com/lowagie/text/xml/xmp/xmp.a \
--$(java_libs_root)/com/lowagie/bc/asn1/asn1.a \
--$(java_libs_root)/com/lowagie/text/pdf/codec/postscript/postscript.a \
-+itext_libs=$(GCJ_ITEXT_SO)
- 
- # font metric files, included as resources
- afms= $(wildcard $(java_libs_root)/com/lowagie/text/pdf/fonts/*.afm)
- afm_objects= $(patsubst %.afm, %.o, $(afms))
- 
--# older versions of libgcj might not have the MD5 algorithm,
--# so I added it here; these *_local java files were grabbed from
--# libgcj CVS on March 7, 2004; diffed September 5, 2006 w/ gcc 4.1.1
--#
--# gnu/gcj/convert/Input_UnicodeBig.java was grabbed March 26, 2004; diffed September 5, 2006 w/ gcc 4.1.1
--#
--libgcj_local_libs = \
--$(java_libs_root)/java_local/security/security.a \
--$(java_libs_root)/gnu_local/java/security/provider/provider.a \
--$(java_libs_root)/gnu_local/java/security/security.a \
--$(java_libs_root)/gnu/gcj/convert/convert.a
--
- # this must already be set according to your platform Makefile;
- # we're just appending to it, here
- #
-@@ -51,19 +29,18 @@
- all : java_libs pdftk
- 
- java_libs :
--	$(MAKE) -C $(java_libs_root)
- 
--attachments.o : attachments.cc attachments.h pdftk.h $(itext_libs) $(libgcj_local_libs)
--	$(CXX) attachments.cc -I$(java_libs_root) $(CPPFLAGS) -c
-+attachments.o : attachments.cc attachments.h pdftk.h
-+	$(CXX) attachments.cc -I$(java_libs_root) $(CXXFLAGS) $(CPPFLAGS) -c
- 
--report.o : report.cc report.h pdftk.h $(itext_libs) $(libgcj_local_libs)
--	$(CXX) report.cc -I$(java_libs_root) $(CPPFLAGS) -c
-+report.o : report.cc report.h pdftk.h
-+	$(CXX) report.cc -I$(java_libs_root) $(CXXFLAGS) $(CPPFLAGS)  -c
- 
--pdftk.o : pdftk.cc pdftk.h attachments.h report.h $(itext_libs) $(libgcj_local_libs)
--	$(CXX) pdftk.cc -I$(java_libs_root) $(CPPFLAGS) -c
-+pdftk.o : pdftk.cc pdftk.h attachments.h report.h
-+	$(CXX) pdftk.cc -I$(java_libs_root) $(CXXFLAGS) $(CPPFLAGS)  -c
- 
--pdftk : pdftk.o attachments.o report.o $(itext_libs) $(libgcj_local_libs) $(afm_objects)
--	$(CXX) pdftk.o attachments.o report.o $(itext_libs) $(libgcj_local_libs) $(afm_objects) -I$(java_libs_root) $(CPPFLAGS) $(CXXFLAGS) -o pdftk
-+pdftk : pdftk.o attachments.o report.o $(afm_objects)
-+	$(GCJ) pdftk.o attachments.o report.o $(itext_libs) $(afm_objects) -I$(java_libs_root) $(GCJFLAGS) -lstdc++ -o pdftk
- 
- install:
- 	/usr/bin/install pdftk /usr/local/bin 
 --- a/pdftk/pdftk.cc
 +++ b/pdftk/pdftk.cc
-@@ -50,7 +50,12 @@
+@@ -59,7 +59,12 @@
  
  #include "com/lowagie/text/Document.h"
  #include "com/lowagie/text/Rectangle.h"
@@ -123,7 +57,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  #include "com/lowagie/text/pdf/PdfString.h"
  #include "com/lowagie/text/pdf/PdfNumber.h"
  #include "com/lowagie/text/pdf/PdfArray.h"
-@@ -191,18 +196,24 @@
+@@ -217,7 +222,7 @@
  		// store in this java object so the gc can trace it
  		g_dont_collect_p->addElement( reader );
  
@@ -132,10 +66,8 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  		if( !input_pdf_p->m_authorized_b ) {
  			open_success_b= false;
  		}
- 	}
- 	catch( java::io::IOException* ioe_p ) { // file open error
--		if( ioe_p->getMessage()->equals( JvNewStringLatin1( "Bad password" ) ) ) {
-+		if( ioe_p->getMessage()->equals( JvNewStringLatin1( "Bad user password" ) ) ) {
+@@ -226,6 +231,12 @@
+ 		if( ioe_p->getMessage()->equals( JvNewStringUTF( "Bad password" ) ) ) {
  			input_pdf_p->m_authorized_b= false;
  		}
 +		else {
@@ -143,14 +75,11 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
 +					(int) ioe_p->getMessage()->getBytes()->length)
 +			  	<< endl;
 +		}
++
  		open_success_b= false;
  	}
  	catch( java::lang::Throwable* t_p ) { // unexpected error
-+		t_p->printStackTrace();
- 		cerr << "Error: Unexpected Exception in open_reader()" << endl;
- 		open_success_b= false;
- 							
-@@ -2017,14 +2028,14 @@
+@@ -2092,14 +2103,14 @@
  				output_doc_p->addCreator( jv_creator_p );
  
  				// un/compress output streams?
@@ -173,7 +102,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  
  				// encrypt output?
  				if( m_output_encryption_strength!= none_enc ||
-@@ -2033,7 +2044,7 @@
+@@ -2108,7 +2119,7 @@
  					{
  						// if no stregth is given, default to 128 bit,
  						// (which is incompatible w/ Acrobat 4)
@@ -182,7 +111,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  							( m_output_encryption_strength!= bits40_enc );
  
  						writer_p->setEncryption( output_user_pw_p,
-@@ -2057,7 +2068,8 @@
+@@ -2132,7 +2143,8 @@
  							input_reader_p->getPdfObject( trailer_p->get( itext::PdfName::ID ) );
  						if( file_id_p && file_id_p->isArray() ) {
  
@@ -192,7 +121,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  						}
  					}
  
-@@ -2168,12 +2180,14 @@
+@@ -2250,12 +2262,14 @@
  
  					// un/compress output streams?
  					if( m_output_uncompress_b ) {
@@ -211,7 +140,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  					}
  
  					// encrypt output?
-@@ -2183,7 +2197,7 @@
+@@ -2265,7 +2279,7 @@
  						{
  							// if no stregth is given, default to 128 bit,
  							// (which is incompatible w/ Acrobat 4)
@@ -220,7 +149,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  								( m_output_encryption_strength!= bits40_enc );
  
  							writer_p->setEncryption( output_user_pw_p,
-@@ -2403,13 +2417,15 @@
+@@ -2498,13 +2512,15 @@
  				// un/compress output streams?
  				if( m_output_uncompress_b ) {
  					add_marks_to_pages( input_reader_p );
@@ -240,7 +169,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  				}
  
  				// encrypt output?
-@@ -2420,13 +2436,13 @@
+@@ -2515,13 +2531,13 @@
  
  						// if no stregth is given, default to 128 bit,
  						// (which is incompatible w/ Acrobat 4)
@@ -256,21 +185,21 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  					}
  
  				// fill form fields?
-@@ -2435,8 +2451,11 @@
+@@ -2530,8 +2546,11 @@
  					{
  						itext::AcroFields* fields_p= writer_p->getAcroFields();
  						fields_p->setGenerateAppearances( true ); // have iText create field appearances
--						if( fdf_reader_p && fields_p->setFields( fdf_reader_p ) ||
--								xfdf_reader_p && fields_p->setFields( xfdf_reader_p ) )
+-						if( ( fdf_reader_p && fields_p->setFields( fdf_reader_p ) ) ||
+-								( xfdf_reader_p && fields_p->setFields( xfdf_reader_p ) ) )
 +						if( fdf_reader_p ) 
 +							fields_p->setFields( fdf_reader_p );
-+						if(	xfdf_reader_p )
++						if( xfdf_reader_p )
 +							fields_p->setFields( xfdf_reader_p );
-+
++						if( fdf_reader_p || xfdf_reader_p )
  							{ // Rich Text input found
  
  								// set the PDF so that Acrobat will create appearances;
-@@ -2486,16 +2505,16 @@
+@@ -2597,16 +2616,16 @@
  							doc_page_size_p= doc_page_size_p->rotate();
  						}
  
@@ -295,7 +224,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
            
  						com::lowagie::text::pdf::PdfContentByte* content_byte_p= 
  							( background_b ) ? writer_p->getUnderContent( ii ) : writer_p->getOverContent( ii );
-@@ -2512,20 +2531,20 @@
+@@ -2623,20 +2642,20 @@
  																					 0, -1* mark_scale,
  																					 mark_scale, 0,
  																					 h_trans, 
@@ -320,7 +249,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  						}
  					}
  				}
-@@ -2537,7 +2556,7 @@
+@@ -2648,7 +2667,7 @@
  				}
  
  				// done; write output
@@ -329,7 +258,7 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  			}
  			break;
  
-@@ -2663,15 +2682,15 @@
+@@ -2812,15 +2831,15 @@
  			JvCreateJavaVM(NULL);
  			JvAttachCurrentThread(NULL, NULL);
  
@@ -356,12 +285,11 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  
 --- a/pdftk/report.cc
 +++ b/pdftk/report.cc
-@@ -50,8 +50,13 @@
+@@ -55,8 +55,12 @@
  
  #include "com/lowagie/text/Document.h"
  #include "com/lowagie/text/Rectangle.h"
 +#undef NULL
-+
 +// Ewww, PdfName has a field called NULL.
  #include "com/lowagie/text/pdf/PdfObject.h"
  #include "com/lowagie/text/pdf/PdfName.h"
@@ -370,20 +298,3 @@ Author: Jochen Schmitt <Jochen@herr-schmitt.de> (modified for Debian by Johann F
  #include "com/lowagie/text/pdf/PdfString.h"
  #include "com/lowagie/text/pdf/PdfNumber.h"
  #include "com/lowagie/text/pdf/PdfArray.h"
-@@ -1315,11 +1320,12 @@
- 				if( xmp_str_p ) {
- 					xmp_str_p->put( itext::PdfName::TYPE, itext::PdfName::METADATA );
- 					xmp_str_p->put( itext::PdfName::SUBTYPE, itext::PdfName::XML );
--			
--					itext::PdfIndirectReference* xmp_str_ref_p=
--						(itext::PdfIndirectReference*)reader_p->getPRIndirectReference( xmp_str_p );
- 
--					catalog_p->put( itext::PdfName::METADATA, xmp_str_ref_p );
-+//				FIXME: PdfReader.getPRIndirectReference is absent from itext-2.1.4
-+// 					itext::PdfIndirectReference* xmp_str_ref_p=
-+// 						(itext::PdfIndirectReference*)reader_p->getPRIndirectReference( xmp_str_p );
-+
-+// 					catalog_p->put( itext::PdfName::METADATA, xmp_str_ref_p );
- 				}
- 				else {
- 					ret_val_b= false;

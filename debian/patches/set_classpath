@@ -3,9 +3,9 @@ Author: Johann Felix Soden <johfel@gmx.de>
 
 --- a/pdftk/pdftk.cc
 +++ b/pdftk/pdftk.cc
-@@ -2659,6 +2659,10 @@
- 	bool synopsis_b= ( argc== 1 );
- 	int ret_val= 0; // default: no error
+@@ -2808,6 +2808,10 @@
+ 	static char my_lang[]="LANG=C";
+ 	putenv(my_lang);
  
 +	// set classpath:
 +	static char my_classpath[]="CLASSPATH=/usr/share/java/bcprov.jar:/usr/share/java/bcmail.jar:/usr/share/java/itext.jar";
