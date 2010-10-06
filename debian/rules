@@ -23,7 +23,7 @@ override_dh_auto_build:
 	jar tf $(GCJ_ITEXT_JAR_PATH) | grep '\.class' | sed 's/\.class//' | sed 's|/|\.|g' > classes
 	gjavah$(VERSUFF) -d java_libs2 -cni -classpath=$(GCJ_ITEXT_JAR_PATH) `cat classes`
 	ln --target-directory $(CURDIR)/pdftk/ -s $(GCJ_ITEXT_SO_PATH)
-	$(MAKE) -C $(CURDIR)/pdftk -f Makefile.Debian GCJ_ITEXT_SO=$(GCJ_ITEXT_SO_NAME) VERSUFF=$(VERSUFF)
+	$(MAKE) -C $(CURDIR)/pdftk -f Makefile.Debian JAVALIB=$(GCJ_ITEXT_SO_NAME) VERSUFF=$(VERSUFF) JAVALIBPATH=../java_libs2
 
 override_dh_auto_clean:
 	# do not call clean target if source is unpatched
