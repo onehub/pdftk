@@ -1,7 +1,8 @@
 /* -*- Mode: C++; tab-width: 2; c-basic-offset: 2 -*- */
 /*
 	pdftk, the PDF Toolkit
-	Copyright (c) 2003-2006 Sid Steward
+	Copyright (c) 2003-2010 Sid Steward
+
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -13,19 +14,26 @@
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
-	Visit: http://www.gnu.org/licenses/gpl.txt
-	for more details on this license.
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Visit: http://www.pdftk.com for the latest information on pdftk
 
-	Please contact Sid Steward with bug reports:
-	ssteward at AccessPDF dot com
+	Visit: www.pdftk.com for pdftk information and articles
+	Permalink: http://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/
+
+	Please email Sid Steward with questions or bug reports.
+	Include "pdftk" in the subject line to ensure successful delivery:
+	sid.steward at pdflabs dot com
+
 */
 
 // Tell C++ compiler to use Java-style exceptions.
 #pragma GCC java_exceptions
 
 #include <gcj/cni.h>
+#ifdef UNBLOCK_SIGNALS
+#include <signal.h>
+#endif
 
 #include <iostream>
 #include <fstream>
@@ -38,6 +46,7 @@
 #include <unistd.h> // for access()
 
 #include <java/lang/System.h>
+#include <java/lang/ClassCastException.h>
 #include <java/lang/Throwable.h>
 #include <java/lang/String.h>
 #include <java/io/IOException.h>
@@ -127,8 +136,19 @@ void
 prompt_for_filename( const string message,
 										 string& fn )
 {
+	// input could be multibyte, so try working
+	// with bytes instead of formatted input features
+
+	char cc= '\n';
+	fn= "";
+
 	cout << message << endl;
-	const int buff_size= 4096;
+
+  while( cin.get( cc ) && cc!= '\n' ) { fn+= cc; }
+
+	/*
+	cout << message << endl;
+	const string::size_type buff_size= 4096;
 	char buff[buff_size];
 	cin.getline( buff, buff_size );
 
@@ -148,10 +168,12 @@ prompt_for_filename( const string message,
 		cout << "   Please review it and make sure it wasn't truncated:" << endl;
 		cout << fn << endl;
 	}
+	*/
 }
 
 bool
-TK_Session::add_reader( InputPdf* input_pdf_p )
+TK_Session::add_reader( InputPdf* input_pdf_p,
+												bool keep_artifacts_b= false )
 {
 	bool open_success_b= true;
 
@@ -163,7 +185,7 @@ TK_Session::add_reader( InputPdf* input_pdf_p )
 		}
 		if( input_pdf_p->m_password.empty() ) {
 			reader=
-				new itext::PdfReader( JvNewStringLatin1( input_pdf_p->m_filename.c_str() ) );
+				new itext::PdfReader( JvNewStringUTF( input_pdf_p->m_filename.c_str() ) );
 		}
 		else {
 			if( input_pdf_p->m_password== "PROMPT" ) {
@@ -175,12 +197,16 @@ TK_Session::add_reader( InputPdf* input_pdf_p )
 							input_pdf_p->m_password.size() );
 
 			reader= 
-				new itext::PdfReader( JvNewStringLatin1( input_pdf_p->m_filename.c_str() ),
+				new itext::PdfReader( JvNewStringUTF( input_pdf_p->m_filename.c_str() ),
 															password );
 		}
-		reader->consolidateNamedDestinations();
-		reader->removeUnusedObjects();
-		reader->shuffleSubsetNames();
+		
+		if( !keep_artifacts_b ) {
+			// generally useful operations
+			reader->consolidateNamedDestinations();
+			reader->removeUnusedObjects();
+			//reader->shuffleSubsetNames(); // changes the PDF subset names, but not the PostScript font names
+		}
 
 		input_pdf_p->m_num_pages= reader->getNumberOfPages();
 
@@ -197,16 +223,16 @@ TK_Session::add_reader( InputPdf* input_pdf_p )
 		}
 	}
 	catch( java::io::IOException* ioe_p ) { // file open error
-		if( ioe_p->getMessage()->equals( JvNewStringLatin1( "Bad password" ) ) ) {
+		if( ioe_p->getMessage()->equals( JvNewStringUTF( "Bad password" ) ) ) {
 			input_pdf_p->m_authorized_b= false;
 		}
 		open_success_b= false;
 	}
 	catch( java::lang::Throwable* t_p ) { // unexpected error
 		cerr << "Error: Unexpected Exception in open_reader()" << endl;
-		open_success_b= false;
-							
-		//t_p->printStackTrace(); // debug
+		t_p->printStackTrace(); // debug
+
+		open_success_b= false;						
 	}
 
 	if( !input_pdf_p->m_authorized_b && m_ask_about_warnings_b ) {
@@ -247,8 +273,14 @@ TK_Session::open_input_pdf_readers()
 	bool open_success_b= true;
 
 	if( !m_input_pdf_readers_opened_b ) {
-		for( vector< InputPdf >::iterator it= m_input_pdf.begin(); it!= m_input_pdf.end(); ++it ) {
-			open_success_b= add_reader( &(*it) ) && open_success_b;
+		if( m_operation== filter_k && m_input_pdf.size()== 1 ) {
+			// don't touch input pdf -- preserve artifacts
+			open_success_b= add_reader( &(*(m_input_pdf.begin())), true );
+		}
+		else {
+			for( vector< InputPdf >::iterator it= m_input_pdf.begin(); it!= m_input_pdf.end(); ++it ) {
+				open_success_b= add_reader( &(*it) ) && open_success_b;
+			}
 		}
 		m_input_pdf_readers_opened_b= open_success_b;
 	}
@@ -391,6 +423,12 @@ TK_Session::is_keyword( char* ss, int* keyword_len_p )
 		// pdftk 1.10: making background an operation
 		// (and preserving old behavior for backwards compatibility)
 		return background_k;
+	}
+	else if( strcmp( ss_copy, "multibackground" )== 0 ) {
+		return multibackground_k;
+	}
+	else if( strcmp( ss_copy, "multistamp" )== 0 ) {
+		return multistamp_k;
 	}
 	else if( strcmp( ss_copy, "stamp" )== 0 ) {
 		return stamp_k;
@@ -837,21 +875,35 @@ TK_Session::handle_some_output_options( TK_Session::keyword kw, ArgState* arg_st
 
 TK_Session::TK_Session( int argc, 
 												char** argv ) :
-	m_valid_b( false ),
-	m_authorized_b( true ),
-	m_input_pdf_readers_opened_b( false ),
-  m_operation( none_k ),
-	m_output_user_perms( 0 ),
-	m_output_uncompress_b( false ),
-	m_output_compress_b( false ),
-	m_output_flatten_b( false ),
-	m_output_drop_xfa_b( false ),
-	m_output_keep_first_id_b( false ),
-	m_output_keep_final_id_b( false ),
-	m_output_encryption_strength( none_enc ),
-	m_verbose_reporting_b( false ),
-	m_ask_about_warnings_b( ASK_ABOUT_WARNINGS ), // set default at compile-time
-	m_input_attach_file_pagenum( 0 )
+ 	m_valid_b( false ),
+ 	m_authorized_b( true ),
+ 	m_input_pdf_readers_opened_b( false ),
+ 	m_verbose_reporting_b( false ),
+ 	m_ask_about_warnings_b( ASK_ABOUT_WARNINGS ), // set default at compile-time
+ 	m_input_pdf(),
+ 	m_input_pdf_index(),
+ 	m_input_attach_file_filename(),
+ 	m_input_attach_file_pagenum( 0 ),
+ 	m_update_info_filename(),
+ 	m_update_xmp_filename(),
+ 	m_operation( none_k ),
+ 	m_page_seq(),
+ 	m_form_data_filename(),
+ 	m_background_filename(),
+ 	m_stamp_filename(),
+ 	m_output_filename(),
+ 	m_output_owner_pw(),
+ 	m_output_user_pw(),
+ 	m_output_user_perms( 0 ),
+ 	m_multistamp_b ( false ),
+ 	m_multibackground_b ( false ),
+ 	m_output_uncompress_b( false ),
+ 	m_output_compress_b( false ),
+ 	m_output_flatten_b( false ),
+ 	m_output_drop_xfa_b( false ),
+ 	m_output_keep_first_id_b( false ),
+ 	m_output_keep_final_id_b( false ),
+	m_output_encryption_strength( none_enc )
 {
 	TK_Session::ArgState arg_state = input_files_e;
 
@@ -880,6 +932,15 @@ TK_Session::TK_Session( int argc,
   for( int ii= 1; ii< argc && !fail_b && arg_state!= done_e; ++ii ) {
     int keyword_len= 0;
     keyword arg_keyword= is_keyword( argv[ii], &keyword_len );
+
+		// these keywords can be false hits because of their loose matching requirements;
+		// since they are suffixes to page ranges, their appearance here is most likely a false match;
+		if( arg_keyword== end_k ||
+				arg_keyword== even_k ||
+				arg_keyword== odd_k )
+			{
+				arg_keyword= none_k;
+			}	
 
     switch( arg_state ) {
 
@@ -945,8 +1006,18 @@ TK_Session::TK_Session( int argc,
 				m_operation= filter_k;
 				arg_state= background_filename_e;
 			}
+			else if( arg_keyword== multibackground_k ) {
+				m_operation= filter_k;
+				m_multibackground_b= true;
+				arg_state= background_filename_e;
+			}
 			else if( arg_keyword== stamp_k ) {
 				m_operation= filter_k;
+				arg_state= stamp_filename_e;
+			}
+			else if( arg_keyword== multistamp_k ) {
+				m_operation= filter_k;
+				m_multistamp_b= true;
 				arg_state= stamp_filename_e;
 			}
 			else if( arg_keyword== output_k ) { // we reached the output section
@@ -954,6 +1025,17 @@ TK_Session::TK_Session( int argc,
 			}
       else if( arg_keyword== none_k ) {
 				// here is where the two cases (input_files_e, input_pw_e) diverge
+
+				char* eq_loc= strchr( argv[ii], '=' );
+				// if present, handle must be single, upper-case char;
+				// if it isn't, assume that the given equals sign is part of the filename or password
+				// (before ver. 1.42 it was an error to have an eq. sign if it wasn't assoc. w/ a handle)
+				if( eq_loc &&
+						( ( argv[ii]+ 1< eq_loc ) ||
+							!( 'A'<= argv[ii][0] && argv[ii][0]<= 'Z' ) ) )
+					{
+						eq_loc= 0;
+					}
 
 				if( arg_state== input_files_e ) {
 					// input_files_e:
@@ -963,45 +1045,33 @@ TK_Session::TK_Session( int argc,
 					// treat argv[ii] like an optional input handle and filename
 					// like this: [<handle>=]<filename>
 
-					char* eq_loc= strchr( argv[ii], '=' );
-
 					if( eq_loc== 0 ) { // no equal sign; no handle
-
 							InputPdf input_pdf;
 							input_pdf.m_filename= argv[ii];
 							m_input_pdf.push_back( input_pdf );
 					}
 					else { // use given handle for filename; test, first
 						
-						if( ( argv[ii]+ 1< eq_loc ) ||
-								!( 'A'<= argv[ii][0] && argv[ii][0]<= 'Z' ) ) 
-							{ // error
-								cerr << "Error: Handle can only be a single, upper-case letter" << endl;
-								cerr << "   here: " << argv[ii] << " Exiting." << endl;
-								fail_b= true;
-							}
-						else {
-							// look up handle
-							map< string, InputPdfIndex >::const_iterator it= 
-								m_input_pdf_index.find( string(1, argv[ii][0]) );
+						// look up handle
+						map< string, InputPdfIndex >::const_iterator it= 
+							m_input_pdf_index.find( string(1, argv[ii][0]) );
 
-							if( it!= m_input_pdf_index.end() ) { // error: alreay in use
-								cerr << "Error: Handle given here: " << endl;
-								cerr << "      " << argv[ii] << endl;
-								cerr << "   is already associated with: " << endl;
-								cerr << "      " << m_input_pdf[it->second].m_filename << endl;
-								cerr << "   Exiting." << endl;
-								fail_b= true;
-							}
-							else { // add handle/filename association
-								*eq_loc= 0;
+						if( it!= m_input_pdf_index.end() ) { // error: alreay in use
+							cerr << "Error: Handle given here: " << endl;
+							cerr << "      " << argv[ii] << endl;
+							cerr << "   is already associated with: " << endl;
+							cerr << "      " << m_input_pdf[it->second].m_filename << endl;
+							cerr << "   Exiting." << endl;
+							fail_b= true;
+						}
+						else { // add handle/filename association
+							*eq_loc= 0;
 
-								InputPdf input_pdf;
-								input_pdf.m_filename= eq_loc+ 1;
-								m_input_pdf.push_back( input_pdf );
+							InputPdf input_pdf;
+							input_pdf.m_filename= eq_loc+ 1;
+							m_input_pdf.push_back( input_pdf );
 
-								m_input_pdf_index[ string(1, argv[ii][0]) ]= m_input_pdf.size()- 1;
-							}
+							m_input_pdf_index[ string(1, argv[ii][0]) ]= m_input_pdf.size()- 1;
 						}
 					}
 				} // end: arg_state== input_files_e
@@ -1013,7 +1083,11 @@ TK_Session::TK_Session( int argc,
 					// like this <handle>=<password>; if no handle is
 					// given, assign passwords to input in order;
 
-					char* eq_loc= strchr( argv[ii], '=' );
+					// if handles not used for input PDFs, then assume
+					// any equals signs found in p/w are part of p/w
+					if( m_input_pdf_index.size()== 0 ) {
+						eq_loc= 0;
+					}
 
 					if( eq_loc== 0 ) { // no equal sign; try using default handles
 						if( password_using_handles_b ) { // error: expected a handle
@@ -1052,18 +1126,6 @@ TK_Session::TK_Session( int argc,
 							cerr << "   they must be single, upper case letters, like: A, B, etc." << endl;
 							fail_b= true;
 						}
-						else if( argv[ii]+ 0== eq_loc ) { // error
-							cerr << "Error: No user-supplied handle found" << endl;
-							cerr << "   at: " << argv[ii] << " Exiting." << endl;
-							fail_b= true;
-						}
-						else if( ( argv[ii]+ 1< eq_loc ) ||
-										 !( 'A'<= argv[ii][0] && argv[ii][0]<= 'Z' ) ) 
-							{ // error
-								cerr << "Error: Handle can only be a single, upper-case letter" << endl;
-								cerr << "   here: " << argv[ii] << " Exiting." << endl;
-								fail_b= true;
-							}
 						else {
 							password_using_handles_b= true;
 
@@ -1340,7 +1402,7 @@ TK_Session::TK_Session( int argc,
 						if( (!even_pages_b || !(kk % 2)) &&
 								(!odd_pages_b || (kk % 2)) )
 							{
-								if( 0<= kk && kk<= m_input_pdf[range_pdf_index].m_num_pages ) {
+								if( kk<= m_input_pdf[range_pdf_index].m_num_pages ) {
 
 									// look to see if this page of this document
 									// has already been referenced; if it has,
@@ -1868,9 +1930,12 @@ get_output_stream( string output_filename,
 {
 	java::OutputStream* os_p= 0;
 
-	if( output_filename== "PROMPT" ) {
+	if( output_filename.empty() || output_filename== "PROMPT" ) {
 		prompt_for_filename( "Please enter a name for the output:", 
 												 output_filename );
+		// recurse; try again
+		return get_output_stream( output_filename,
+															ask_about_warnings_b );
 	}
 	if( output_filename== "-" ) { // stdout
 		os_p= java::System::out;
@@ -1878,8 +1943,15 @@ get_output_stream( string output_filename,
 	else {
 		if( ask_about_warnings_b ) {
 			// test for existing file by this name
-			ifstream ifs( output_filename.c_str() );
-			if( ifs ) {
+			bool output_exists_b= false;
+			{
+				FILE* fp= fopen( output_filename.c_str(), "rb" );
+				if( fp ) {
+					output_exists_b= true;
+					fclose( fp );
+				}
+			}
+			if( output_exists_b ) {
 				cout << "Warning: the output file: " << output_filename << " already exists.  Overwrite? (y/n)" << endl;
 				char buff[64];
 				cin.getline( buff, 64 );
@@ -1893,7 +1965,7 @@ get_output_stream( string output_filename,
 
 		// attempt to open the stream
 		java::String* jv_output_filename_p=
-			JvNewStringLatin1( output_filename.c_str() );
+			JvNewStringUTF( output_filename.c_str() );
 		try {
 			os_p= new java::FileOutputStream( jv_output_filename_p );
 		}
@@ -1920,7 +1992,7 @@ add_mark_to_page( itext::PdfReader* reader_p,
 									jint page_num )
 {
 	itext::PdfName* page_marker_p=
-		new itext::PdfName( JvNewStringLatin1(g_page_marker) );
+		new itext::PdfName( JvNewStringUTF( g_page_marker ) );
 	itext::PdfDictionary* page_p= reader_p->getPageN( page_index );
 	if( page_p && page_p->isDictionary() ) {
 		page_p->put( page_marker_p, new itext::PdfNumber( page_num ) );
@@ -1939,7 +2011,7 @@ remove_mark_from_page( itext::PdfReader* reader_p,
 											 jint page_num )
 {
 	itext::PdfName* page_marker_p=
-		new itext::PdfName( JvNewStringLatin1(g_page_marker) );
+		new itext::PdfName( JvNewStringUTF( g_page_marker ) );
 	itext::PdfDictionary* page_p= reader_p->getPageN( page_num );
 	if( page_p && page_p->isDictionary() ) {
 		page_p->remove( page_marker_p );
@@ -1954,9 +2026,11 @@ remove_marks_from_pages( itext::PdfReader* reader_p )
 	}
 }
 
-void
+int
 TK_Session::create_output()
 {
+	int ret_val= 0; // default: no error
+
 	if( is_valid() ) {
 
 		/*
@@ -1981,7 +2055,7 @@ TK_Session::create_output()
 
 		string creator= "pdftk "+ string(PDFTK_VER)+ " - www.pdftk.com";
 		java::String* jv_creator_p= 
-			JvNewStringLatin1( creator.c_str() );
+			JvNewStringUTF( creator.c_str() );
 
 		if( m_output_owner_pw== "PROMPT" ) {
 			prompt_for_password( "owner", "the output PDF", m_output_owner_pw );
@@ -2010,6 +2084,7 @@ TK_Session::create_output()
 														 m_ask_about_warnings_b );
 
 				if( !ofs_p ) { // file open error
+					ret_val= 1;
 					break;
 				}
 				itext::PdfCopy* writer_p= new itext::PdfCopy( output_doc_p, ofs_p );
@@ -2120,11 +2195,13 @@ TK_Session::create_output()
 							else { // error
 								cerr << "Internal Error: no reader found for page: ";
 								cerr << it->m_page_num << " in file: " << input_pdf.m_filename << endl;
+								ret_val= 2;
 								break;
 							}
 						}
 						else { // error
 							cerr << "Internal Error: Unable to find handle in m_input_pdf." << endl;
+							ret_val= 2;
 							break;
 						}
 					}
@@ -2149,16 +2226,21 @@ TK_Session::create_output()
 				jint input_num_pages= 
 					m_input_pdf.begin()->m_num_pages;
 
+				if( m_output_filename== "PROMPT" ) {
+					prompt_for_filename( "Please enter a filename pattern for the PDF pages (e.g. pg_%04d.pdf):",
+															 m_output_filename );
+				}
 				if( m_output_filename.empty() ) {
 					m_output_filename= "pg_%04d.pdf";
 				}
+
 				for( jint ii= 0; ii< input_num_pages; ++ii ) {
 
 					// the filename
 					char buff[4096]= "";
 					sprintf( buff, m_output_filename.c_str(), ii+ 1 );
 
-					java::String* jv_output_filename_p= JvNewStringLatin1( buff );
+					java::String* jv_output_filename_p= JvNewStringUTF( buff );
 
 					itext::Document* output_doc_p= new itext::Document();
 					java::FileOutputStream* ofs_p= new java::FileOutputStream( jv_output_filename_p );
@@ -2212,6 +2294,7 @@ TK_Session::create_output()
 				}
 				else { // error
 					cerr << "Error: unable to open file for output: doc_data.txt" << endl;
+					ret_val= 1;
 				}
 
 			}
@@ -2224,6 +2307,7 @@ TK_Session::create_output()
 					cerr << "Error: Only one input PDF file may be given for this" << endl;
 					cerr << "   operation.  Maybe you meant to use the \"cat\" operator?" << endl;
 					cerr << "   No output created." << endl;
+					ret_val= 1;
 					break;
 				}
 
@@ -2231,11 +2315,11 @@ TK_Session::create_output()
 				// if input is stdin ("-"), don't pass it to both the FDF and XFDF readers
 				itext::FdfReader* fdf_reader_p= 0;
 				itext::XfdfReader* xfdf_reader_p= 0;
+				if( m_form_data_filename== "PROMPT" ) { // handle case where user enters '-' or (empty) at the prompt
+					prompt_for_filename( "Please enter a filename for the form data:", 
+															 m_form_data_filename );
+				}
 				if( !m_form_data_filename.empty() ) { // we have form data to process
-					if( m_form_data_filename== "PROMPT" ) { // allows user to enter - at the prompt
-						prompt_for_filename( "Please enter a filename for the form data:", 
-																 m_form_data_filename );
-					}
 					if( m_form_data_filename== "-" ) { // form data on stdin
 						JArray<jbyte>* in_arr= itext::RandomAccessFileOrArray::InputStreamToArray( java::System::in );
 						
@@ -2252,7 +2336,7 @@ TK_Session::create_output()
 								cerr << "Error: Failed to open form data file: " << endl;
 								cerr << "   " << m_form_data_filename << endl;
 								cerr << "   No output created." << endl;
-
+								ret_val= 1;
 								//ioe_p->printStackTrace(); // debug
 								break;
 							}
@@ -2263,19 +2347,19 @@ TK_Session::create_output()
 						// first try fdf
 						try {
 							fdf_reader_p=
-								new itext::FdfReader( JvNewStringLatin1( m_form_data_filename.c_str() ) );
+								new itext::FdfReader( JvNewStringUTF( m_form_data_filename.c_str() ) );
 						}
 						catch( java::io::IOException* ioe_p ) { // file open error
 							// maybe it's xfdf?
 							try {
 								xfdf_reader_p=
-									new itext::XfdfReader( JvNewStringLatin1( m_form_data_filename.c_str() ) );
+									new itext::XfdfReader( JvNewStringUTF( m_form_data_filename.c_str() ) );
 							}
 							catch( java::io::IOException* ioe_p ) { // file open error
 								cerr << "Error: Failed to open form data file: " << endl;
 								cerr << "   " << m_form_data_filename << endl;
 								cerr << "   No output created." << endl;
-								
+								ret_val= 1;
 								//ioe_p->printStackTrace(); // debug
 								break;
 							}
@@ -2286,41 +2370,47 @@ TK_Session::create_output()
 				// try opening the PDF background or stamp before we get too involved
 				itext::PdfReader* mark_p= 0;
 				bool background_b= true; // set false for stamp
-				com::lowagie::text::pdf::PdfImportedPage* mark_page_p= 0;
 				//
+				// background
+				if( m_background_filename== "PROMPT" ) {
+					prompt_for_filename( "Please enter a filename for the background PDF:", 
+															 m_background_filename );
+				}
 				if( !m_background_filename.empty() ) {
-					if( m_background_filename== "PROMPT" ) {
-						prompt_for_filename( "Please enter a filename for the background PDF:", 
-																 m_background_filename );
-					}
 					try {
-						mark_p= new itext::PdfReader( JvNewStringLatin1( m_background_filename.c_str() ) );
+						mark_p= new itext::PdfReader( JvNewStringUTF( m_background_filename.c_str() ) );
 						mark_p->removeUnusedObjects();
-						mark_p->shuffleSubsetNames();
+						//reader->shuffleSubsetNames(); // changes the PDF subset names, but not the PostScript font names
 					}
 					catch( java::io::IOException* ioe_p ) { // file open error
 						cerr << "Error: Failed to open background PDF file: " << endl;
 						cerr << "   " << m_background_filename << endl;
 						cerr << "   No output created." << endl;
+						ret_val= 1;
 						break;
 					}
 				}
-				else if( !m_stamp_filename.empty() ) { // stamp
-					background_b= false;
+				//
+				// stamp
+				if( !mark_p ) {
 					if( m_stamp_filename== "PROMPT" ) {
 						prompt_for_filename( "Please enter a filename for the stamp PDF:", 
 																 m_stamp_filename );
 					}
-					try {
-						mark_p= new itext::PdfReader( JvNewStringLatin1( m_stamp_filename.c_str() ) );
-						mark_p->removeUnusedObjects();
-						mark_p->shuffleSubsetNames();
-					}
-					catch( java::io::IOException* ioe_p ) { // file open error
-						cerr << "Error: Failed to open stamp PDF file: " << endl;
-						cerr << "   " << m_stamp_filename << endl;
-						cerr << "   No output created." << endl;
-						break;
+					if( !m_stamp_filename.empty() ) {
+						background_b= false;
+						try {
+							mark_p= new itext::PdfReader( JvNewStringUTF( m_stamp_filename.c_str() ) );
+							mark_p->removeUnusedObjects();
+							//reader->shuffleSubsetNames(); // changes the PDF subset names, but not the PostScript font names
+						}
+						catch( java::io::IOException* ioe_p ) { // file open error
+							cerr << "Error: Failed to open stamp PDF file: " << endl;
+							cerr << "   " << m_stamp_filename << endl;
+							cerr << "   No output created." << endl;
+							ret_val= 1;
+							break;
+						}
 					}
 				}
 
@@ -2329,6 +2419,8 @@ TK_Session::create_output()
 					get_output_stream( m_output_filename,
 														 m_ask_about_warnings_b );
 				if( !ofs_p ) { // file open error
+					cerr << "Error: unable to open file for output: " << m_output_filename << endl;
+					ret_val= 1;
 					break;
 				}
 
@@ -2355,14 +2447,15 @@ TK_Session::create_output()
 					new itext::PdfStamperImp( input_reader_p, ofs_p, 0, false /* append mode */ );
 
 				// update the info?
+				if( m_update_info_filename== "PROMPT" ) {
+					prompt_for_filename( "Please enter an Info file filename:",
+															 m_update_info_filename );
+				}
 				if( !m_update_info_filename.empty() ) {
-					if( m_update_info_filename== "PROMPT" ) {
-						prompt_for_filename( "Please enter an Info file filename:",
-																 m_update_info_filename );
-					}
 					if( m_update_info_filename== "-" ) {
 						if( !UpdateInfo( input_reader_p, cin ) ) {
 							cerr << "Warning: no Info added to output PDF." << endl;
+							ret_val= 1;
 						}
 					}
 					else {
@@ -2370,10 +2463,12 @@ TK_Session::create_output()
 						if( ifs ) {
 							if( !UpdateInfo( input_reader_p, ifs ) ) {
 								cerr << "Warning: no Info added to output PDF." << endl;
+								ret_val= 1;
 							}
 						}
 						else { // error
 							cerr << "Error: unable to open FDF file for input: " << m_update_info_filename << endl;
+							ret_val= 1;
 							break;
 						}
 					}
@@ -2435,8 +2530,8 @@ TK_Session::create_output()
 					{
 						itext::AcroFields* fields_p= writer_p->getAcroFields();
 						fields_p->setGenerateAppearances( true ); // have iText create field appearances
-						if( fdf_reader_p && fields_p->setFields( fdf_reader_p ) ||
-								xfdf_reader_p && fields_p->setFields( xfdf_reader_p ) )
+						if( ( fdf_reader_p && fields_p->setFields( fdf_reader_p ) ) ||
+								( xfdf_reader_p && fields_p->setFields( xfdf_reader_p ) ) )
 							{ // Rich Text input found
 
 								// set the PDF so that Acrobat will create appearances;
@@ -2462,23 +2557,39 @@ TK_Session::create_output()
 
 				// add background/watermark?
 				if( mark_p ) {
-					com::lowagie::text::Rectangle* mark_page_size_p= mark_p->getCropBox( 1 );
-					jint mark_page_rotation= mark_p->getPageRotation( 1 );
-					for( jint mm= 0; mm< mark_page_rotation; mm+=90 ) {
-						mark_page_size_p= mark_page_size_p->rotate();
+
+					jint mark_num_pages= 1; // default: use only the first page of mark
+					if( m_multistamp_b || m_multibackground_b ) { // use all pages of mark
+						mark_num_pages= mark_p->getNumberOfPages();
 					}
 
-					// create a PdfTemplate from the first page of mark
-					// (PdfImportedPage is derived from PdfTemplate)
-					com::lowagie::text::pdf::PdfImportedPage* mark_page_p=
-						writer_p->getImportedPage( mark_p, 1 );
+					// the mark information; initialized inside loop
+					com::lowagie::text::pdf::PdfImportedPage* mark_page_p= 0;
+					com::lowagie::text::Rectangle* mark_page_size_p= 0;
+					jint mark_page_rotation= 0;
 
           // iterate over document's pages, adding mark_page as
-          // a layer 'underneath' the page content; scale mark_page
-          // and move it so it fits within the document's page;
+          // a layer above (stamp) or below (watermark) the page content;
+          // scale mark_page and move it so it fits within the document's page;
+					//
 					jint num_pages= input_reader_p->getNumberOfPages();
 					for( jint ii= 0; ii< num_pages; ) {
-						++ii;
+						++ii; // page refs are 1-based, not 0-based
+
+						// the mark page and its geometry
+						if( ii<= mark_num_pages ) {
+							mark_page_size_p= mark_p->getCropBox( ii );
+							mark_page_rotation= mark_p->getPageRotation( ii );
+							for( jint mm= 0; mm< mark_page_rotation; mm+=90 ) {
+								mark_page_size_p= mark_page_size_p->rotate();
+							}
+
+							// create a PdfTemplate from the first page of mark
+							// (PdfImportedPage is derived from PdfTemplate)
+							mark_page_p= writer_p->getImportedPage( mark_p, ii );
+						}
+
+						// the target page geometry
 						com::lowagie::text::Rectangle* doc_page_size_p= 
 							input_reader_p->getCropBox( ii );
 						jint doc_page_rotation= input_reader_p->getPageRotation( ii );
@@ -2548,6 +2659,7 @@ TK_Session::create_output()
 				if( 1< m_input_pdf.size() ) { // error
 					cerr << "Error: Only one input PDF file may be used for the dump_data operation" << endl;
 					cerr << "   No output created." << endl;
+					ret_val= 1;
 					break;
 				}
 
@@ -2603,10 +2715,11 @@ TK_Session::create_output()
 					//delete writer_p; // OK? GC? -- NOT okay!
 				}
 				else { // error: get_output_stream() reports error
+					ret_val= 1;
 					break;
 				}
 			}
-			break;
+				break;
 
 			case unpack_files_k: { // copy PDF file attachments into current directory
 
@@ -2614,6 +2727,7 @@ TK_Session::create_output()
 				if( 1< m_input_pdf.size() ) { // error
 					cerr << "Error: Only one input PDF file may be given for \"unpack_files\" op." << endl;
 					cerr << "   No output created." << endl;
+					ret_val= 1;
 					break;
 				}
 
@@ -2622,15 +2736,26 @@ TK_Session::create_output()
 
 				this->unpack_files( input_reader_p );
 			}
-			break;
+				break;
+			default:
+				// error
+				cerr << "Unexpected pdftk Error in create_output()" << endl;
+				ret_val= 2;
+				break;
 			}
 		}
 		catch( java::lang::Throwable* t_p )
 			{
 				cerr << "Unhandled Java Exception:" << endl;
 				t_p->printStackTrace();
+				ret_val= 2;
 			}
 	}
+	else { // error
+		ret_val= 1;
+	}
+
+	return ret_val;
 }
 
 int main(int argc, char** argv)
@@ -2639,6 +2764,30 @@ int main(int argc, char** argv)
 	bool version_b= false;
 	bool synopsis_b= ( argc== 1 );
 	int ret_val= 0; // default: no error
+
+	// Helge Skrivervik writes:
+	// "I was moving our Zope/plone server from an Apple Xserve (OS X Tiger) to a Linux system (redhat-something), and I could not get pdftk to work. the commands worked fine ourside of the Zope environ, but whatever I did, the pdftk jobs just hung there. 
+	// "The clue came from the Zope mailing list, where someone pointed out that the OS module in some versions of python turns off all signals before calling external commands. And the problem in pdftk, as determined from strace, was related to multiple threads trying to communicate via signals in the java-libraries. So - a sigsetmask(0); early in main() in pdftk.cc solves the problem ... "
+	//
+	// this code doesn't work on Windows, where there are no signal masks -- so is it necessary?  See:
+	// http://www.suacommunity.com/dictionary/signals.php
+	//
+#ifdef UNBLOCK_SIGNALS
+	sigset_t sigmask;
+	sigemptyset( &sigmask );
+	sigprocmask( SIG_SETMASK, &sigmask, 0 );
+#endif
+
+	/*
+Description: Setting environment LANG=C to circumvent libgcj10 exception with locale de_AT.UTF-8
+ This patch is a workaround to an ArrayIndexOutOfBoundsException
+ evoked in java.text.SimpleDateFormat.formatWithAttribute (libgcj10, Version 4.4.2-4)
+ The exception occures only between April and December and with the de_AT-UTF.8 locale.
+Author: Johann Felix Soden <johfel@gmx.de>
+Bug-Debian: http://bugs.debian.org/560594
+	*/
+	static char my_lang[]="LANG=C";
+	putenv(my_lang);
 
 	for( int ii= 1; ii< argc; ++ii ) {
 		version_b=
@@ -2678,7 +2827,8 @@ int main(int argc, char** argv)
 			tk_session.dump_session_data();
 
 			if( tk_session.is_valid() ) {
-				tk_session.create_output();
+				// create_output() prints necessary error messages
+				ret_val= tk_session.create_output();
 			}
 			else { // error
 				cerr << "Done.  Input errors, so no output created." << endl;
@@ -2686,6 +2836,22 @@ int main(int argc, char** argv)
 			}
 
 			JvDetachCurrentThread();
+		}
+		// per https://bugs.launchpad.net/ubuntu/+source/pdftk/+bug/544636
+		catch(java::lang::ClassCastException* c_p ) {
+			jstring message= c_p->getMessage();
+			if( message->indexOf( JvNewStringUTF( "com.lowagie.text.pdf.PdfDictionary" ) )>= 0 &&
+					message->indexOf( JvNewStringUTF( "com.lowagie.text.pdf.PRIndirectReference" ) )>= 0 )
+			{
+				cerr << "Error: One input PDF seems to not conform to the PDF standard." << endl;
+				cerr << "Perhaps the document information dictionary is a direct object" << endl;
+				cerr << "   instead of an indirect reference." << endl;
+				cerr << "Please report this bug to the program which produced the PDF." << endl;
+				cerr << endl;
+			}
+			cerr << "Java Exception:" << endl;
+			c_p->printStackTrace();
+			ret_val= 1;
 		}
 		catch( java::lang::Throwable* t_p )
 			{
@@ -2702,7 +2868,7 @@ static void
 describe_header() {
 	cout << endl;
 	cout << "pdftk " << PDFTK_VER << " a Handy Tool for Manipulating PDF Documents" << endl;
-	cout << "Copyright (C) 2003-06, Sid Steward - Please Visit: www.pdftk.com" << endl;
+	cout << "Copyright (C) 2003-10, Sid Steward - Please Visit: www.pdftk.com" << endl;
 	cout << "This is free software; see the source code for copying conditions. There is" << endl;
 	cout << "NO warranty, not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
 }
@@ -2725,7 +2891,8 @@ describe_synopsis() {
        Where:\n\
 	    <operation> may be empty, or:\n\
 	    [cat | attach_files | unpack_files | burst |\n\
-	     fill_form | background | stamp | generate_fdf\n\
+	     fill_form | background | stamp | generate_fdf |\n\
+	     multibackground | multistamp |\n\
 	     dump_data | dump_data_fields | update_info]\n\
 \n\
        For Complete Help: pdftk --help\n";
@@ -2805,9 +2972,9 @@ OPTIONS\n\
 	      tion and compression.\n\
 \n\
 	      Available   operations  are:  cat,  attach_files,  unpack_files,\n\
-	      burst,	 fill_form,	background,	stamp,	    dump_data,\n\
-	      dump_data_fields,  generate_fdf,	update_info.  Some  operations\n\
-	      takes additional arguments, described below.\n\
+	      burst, fill_form,  background,  stamp,  multibackground,	multi-\n\
+	      stamp,  dump_data,  dump_data_fields, generate_fdf, update_info.\n\
+	      Some operations takes additional arguments, described below.\n\
 \n\
 	  cat [<page ranges>]\n\
 		 Catenates pages from input PDFs to create a  new  PDF.   Page\n\
@@ -2820,24 +2987,24 @@ OPTIONS\n\
 		 Where	the  handle identifies one of the input PDF files, and\n\
 		 the beginning and ending page numbers	are  one-based	refer-\n\
 		 ences to pages in the PDF file, and the qualifier can be even\n\
-		 or odd, and the page rotation can be N, S, E, W, L, R, or  D.\n\
+		 or odd, and the page rotation can be N, S, E, W, L, R, or D.\n\
 \n\
-		 If  the handle is omitted from the page range, then the pages\n\
+		 If the handle is omitted from the page range, then the  pages\n\
 		 are taken from the first input PDF.\n\
 \n\
 		 The even qualifier causes pdftk to use only the even-numbered\n\
-		 PDF  pages, so 1-6even yields pages 2, 4 and 6 in that order.\n\
+		 PDF pages, so 1-6even yields pages 2, 4 and 6 in that	order.\n\
 		 6-1even yields pages 6, 4 and 2 in that order.\n\
 \n\
 		 The odd qualifier works similarly to the even.\n\
 \n\
 		 The page rotation setting can cause pdftk to rotate pages and\n\
 		 documents.  Each option sets the page rotation as follows (in\n\
-		 degrees): N: 0, E: 90, S: 180, W: 270, L:  -90,  R:  +90,  D:\n\
+		 degrees):  N:	0,  E:	90, S: 180, W: 270, L: -90, R: +90, D:\n\
 		 +180. L, R, and D make relative adjustments to a page's rota-\n\
 		 tion.\n\
 \n\
-		 If no arguments are passed to cat, then  pdftk  combines  all\n\
+		 If  no  arguments  are passed to cat, then pdftk combines all\n\
 		 input PDFs in the order they were given to create the output.\n\
 \n\
 		 NOTES:\n\
@@ -2845,7 +3012,7 @@ OPTIONS\n\
 		 * The keyword end may be used to reference the final page  of\n\
 		   a document instead of a page number.\n\
 		 * Reference a single page by omitting the ending page number.\n\
-		 * The handle may be used alone to represent  the  entire  PDF\n\
+		 *  The  handle  may be used alone to represent the entire PDF\n\
 		   document, e.g., B1-end is the same as B.\n\
 \n\
 		 Page Range Examples w/o Handles:\n\
@@ -2862,12 +3029,11 @@ OPTIONS\n\
 		 A1-21 Beven A72\n\
 		 AW - rotate entire document 90 degrees\n\
 		 B\n\
-		 A2-30evenL  -	take  the even pages from the range, remove 90\n\
+		 A2-30evenL - take the even pages from the  range,  remove  90\n\
 		 degrees from each page's rotation\n\
 		 A A\n\
 		 AevenW AoddE\n\
 		 AW BW BD\n\
-\n\
 	  attach_files <attachment filenames | PROMPT> [to_page <page number |\n\
 	  PROMPT>]\n\
 		 Packs arbitrary files into a PDF using PDF's file  attachment\n\
@@ -2951,11 +3117,25 @@ OPTIONS\n\
 		 as  a	PDF  created from page scans) then the resulting back-\n\
 		 ground won't be visible -- use the stamp feature instead.\n\
 \n\
+	  multibackground <background PDF filename | - | PROMPT>\n\
+		 Same as the background feature, but applies each page of  the\n\
+		 background  PDF  to  the corresponding page of the input PDF.\n\
+		 If the input PDF has more pages than the stamp PDF, then  the\n\
+		 final	stamp page is repeated across these remaining pages in\n\
+		 the input PDF.\n\
+\n\
 	  stamp <stamp PDF filename | - | PROMPT>\n\
 		 This behaves just like the background feature except it over-\n\
 		 lays  the  stamp  PDF page on top of the input PDF document's\n\
 		 pages.  This works best if the stamp PDF page has a transpar-\n\
 		 ent background.\n\
+\n\
+	  multistamp <stamp PDF filename | - | PROMPT>\n\
+		 Same as the stamp feature, but applies each page of the back-\n\
+		 ground PDF to the corresponding page of the  input  PDF.   If\n\
+		 the  input  PDF  has  more pages than the stamp PDF, then the\n\
+		 final stamp page is repeated across these remaining pages  in\n\
+		 the input PDF.\n\
 \n\
 	  dump_data\n\
 		 Reads	a  single,  input PDF file and reports various statis-\n\
@@ -3085,6 +3265,8 @@ OPTIONS\n\
 	      its output without notice.\n\
 \n\
 EXAMPLES\n\
+\n\
+\n\
        Decrypt a PDF\n\
 	 pdftk secured.pdf input_pw foopass output unsecured.pdf\n\
 \n\
@@ -3092,7 +3274,7 @@ EXAMPLES\n\
        missions (the default)\n\
 	 pdftk 1.pdf output 1.128.pdf owner_pw foopass\n\
 \n\
-       Same as above, except password 'baz' must also be used to  open	output\n\
+       Same  as  above, except password 'baz' must also be used to open output\n\
        PDF\n\
 	 pdftk 1.pdf output 1.128.pdf owner_pw foo user_pw baz\n\
 \n\
@@ -3115,7 +3297,7 @@ EXAMPLES\n\
        default). Set the owner PW to 'foopass'.\n\
 	 pdftk 1.pdf 2.pdf cat output 3.pdf encrypt_40bit owner_pw foopass\n\
 \n\
-       Join two files, one of which requires the password 'foopass'. The  out-\n\
+       Join  two files, one of which requires the password 'foopass'. The out-\n\
        put is not encrypted.\n\
 	 pdftk A=secured.pdf 2.pdf input_pw A=foopass cat output 3.pdf\n\
 \n\
@@ -3126,7 +3308,7 @@ EXAMPLES\n\
        Repair a PDF's corrupted XREF table and stream lengths, if possible\n\
 	 pdftk broken.pdf output fixed.pdf\n\
 \n\
-       Burst  a  single  PDF  document	into  pages  and  dump	its  data   to\n\
+       Burst   a  single  PDF  document  into  pages  and  dump  its  data  to\n\
        doc_data.txt\n\
 	 pdftk in.pdf burst\n\
 \n\
@@ -3141,6 +3323,16 @@ EXAMPLES\n\
 	 pdftk in.pdf cat 1E 2-end output out.pdf\n\
 \n\
        Rotate an entire PDF document to 180 degrees\n\
-	 pdftk in.pdf cat 1-endS output out.pdf\n";
+	 pdftk in.pdf cat 1-endS output out.pdf\n\
+\n\
+NOTES\n\
+       The pdftk home page permalink is:\n\
+       http://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/\n\
+       The easy-to-remember shortcut is: www.pdftk.com\n\
+\n\
+AUTHOR\n\
+       Sid  Steward  (sid.steward at pdflabs dot com) maintains pdftk.	Please\n\
+       email him with questions or bug reports.  Include pdftk in the  subject\n\
+       line to ensure successful delivery.  Thank you.\n";
 
 }

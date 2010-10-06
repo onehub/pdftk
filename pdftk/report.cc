@@ -1,7 +1,8 @@
 /* -*- Mode: C++; tab-width: 2; c-basic-offset: 2 -*- */
 /*
-	pdftk, the PDF Tool Kit
-	Copyright (c) 2003, 2004 Sid Steward
+	pdftk, the PDF Toolkit
+	Copyright (c) 2003, 2004, 2010 Sid Steward
+
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -13,13 +14,17 @@
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
-	Visit: http://www.gnu.org/licenses/gpl.txt
-	for more details on this license.
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Visit: http://www.pdftk.com for the latest information on pdftk
 
-	Please contact Sid Steward with bug reports:
-	ssteward at AccessPDF dot com
+	Visit: www.pdftk.com for pdftk information and articles
+	Permalink: http://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/
+
+	Please email Sid Steward with questions or bug reports.
+	Include "pdftk" in the subject line to ensure successful delivery:
+	sid.steward at pdflabs dot com
+
 */
 
 // Tell C++ compiler to use Java-style exceptions.
@@ -380,8 +385,7 @@ ReportOutlines( ostream& ofs,
 
 static void
 ReportInfo( ostream& ofs,
-						itext::PdfDictionary* info_p,
-						itext::PdfReader* reader_p )
+						itext::PdfDictionary* info_p )
 {
 	if( info_p && info_p->isDictionary() ) {
 		java::Set* keys_p= info_p->getKeys();
@@ -477,8 +481,8 @@ ReportPageLabels( ostream& ofs,
 						}
 
 						{ // PageLabelNumStyle
-							itext::PdfName* r_p= new itext::PdfName(JvNewStringLatin1("r"));
-							itext::PdfName* a_p= new itext::PdfName(JvNewStringLatin1("a"));
+							itext::PdfName* r_p= new itext::PdfName(JvNewStringUTF("r"));
+							itext::PdfName* a_p= new itext::PdfName(JvNewStringUTF("a"));
 
 							itext::PdfName* style_p= (itext::PdfName*)
 								reader_p->getPdfObject( label_p->get( itext::PdfName::S ) );
@@ -571,7 +575,10 @@ class FormField {
 	set< string > m_states; // possible states
 	string m_state;
 
-	FormField() : m_ff(0), m_qq(0), m_maxlen(0) {}
+	FormField() : m_ft(), m_tt(), m_tu(), m_ff(0), m_vv(), m_dv(),
+								m_qq(0), m_ds(), m_rv(),
+								m_maxlen(0),
+								m_states(), m_state() {}
 };
 
 static void
@@ -951,7 +958,7 @@ ReportOnPdf( ostream& ofs,
 					reader_p->getPdfObject( trailer_p->get( itext::PdfName::INFO ) );
 				if( info_p && info_p->isDictionary() ) {
 						
-					ReportInfo( ofs, info_p, reader_p );
+					ReportInfo( ofs, info_p );
 				}
 				else { // warning
 					cerr << "Warning: no info dictionary found" << endl;
@@ -1219,7 +1226,7 @@ UpdateInfo( itext::PdfReader* reader_p,
 							 it!= info_map.end(); ++it )
 						{
 							if( it->second.empty() ) {
-								info_p->remove( new itext::PdfName( JvNewStringLatin1(it->first.c_str()) ) );
+								info_p->remove( new itext::PdfName( JvNewStringUTF(it->first.c_str()) ) );
 							}
 							else {
 								const jsize jvs_size= 4096;
@@ -1227,8 +1234,14 @@ UpdateInfo( itext::PdfReader* reader_p,
 								jsize jvs_len= 0;
 								string_to_jcharstring( jvs, jvs_size, &jvs_len, it->second );
 
-								info_p->put( new itext::PdfName( JvNewStringLatin1(it->first.c_str()) ),
-														 new itext::PdfString( JvNewString(jvs, jvs_len), itext::PdfObject::TEXT_UNICODE ) );
+								info_p->put( new itext::PdfName( JvNewStringUTF(it->first.c_str()) ),
+														 //new itext::PdfString( JvNewString(jvs, jvs_len), itext::PdfObject::TEXT_UNICODE ) );
+														 // patch by Quentin Godfroy <godfroy@clipper.ens.fr>, Chris Adams <cadams@salk.edu>
+														 new itext::PdfString( JvNewStringUTF((char* )it->second.c_str()),
+																									 ( strcmp(it->first.c_str(), "ModDate") && 
+																										 strcmp(it->first.c_str(), "CreationDate") ) ?
+																									 itext::PdfObject::TEXT_UNICODE :
+																									 itext::PdfObject::TEXT_PDFDOCENCODING ) );
 							}
 						}
 				}
@@ -1249,6 +1262,8 @@ UpdateInfo( itext::PdfReader* reader_p,
 
 	return ret_val_b;
 }
+
+/*
 
 static bool
 copyStdinToFile( const char* fn )
@@ -1400,3 +1415,5 @@ UpdateXmp( itext::PdfReader* reader_p,
 
 	return ret_val_b;
 }
+
+*/

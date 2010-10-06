@@ -1,7 +1,8 @@
 /* -*- Mode: C++; tab-width: 2; c-basic-offset: 2 -*- */
 /*
-	pdftk, the PDF Tool Kit
-	Copyright (c) 2003, 2004 Sid Steward
+	pdftk, the PDF Toolkit
+	Copyright (c) 2003, 2004, 2010 Sid Steward
+
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -13,13 +14,17 @@
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
-	Visit: http://www.gnu.org/licenses/gpl.txt
-	for more details on this license.
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Visit: http://www.pdftk.com for the latest information on pdftk
 
-	Please contact Sid Steward with bug reports:
-	ssteward at AccessPDF dot com
+	Visit: www.pdftk.com for pdftk information and articles
+	Permalink: http://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/
+
+	Please email Sid Steward with questions or bug reports.
+	Include "pdftk" in the subject line to ensure successful delivery:
+	sid.steward at pdflabs dot com
+
 */
 
 class TK_Session {
@@ -32,6 +37,11 @@ class TK_Session {
 
 public:
 
+  typedef unsigned long PageNumber;
+
+	typedef enum { NORTH= 0, EAST= 90, SOUTH= 180, WEST= 270 } PageRotate; // DF rotation
+	typedef bool PageRotateAbsolute; // DF absolute / relative rotation
+
 	struct InputPdf {
 		string m_filename;
 		string m_password;
@@ -41,9 +51,9 @@ public:
 		// because one reader mayn't output the same page twice;
 		vector< pair< set<jint>, itext::PdfReader* > > m_readers;
 
-		jint m_num_pages;
+		PageNumber m_num_pages;
 
-		InputPdf() : m_authorized_b(true), m_num_pages(0) {}
+		InputPdf() : m_filename(), m_password(), m_authorized_b(true), m_readers(), m_num_pages(0) {}
 	};
 	// pack input PDF in the order they're given on the command line
 	vector< InputPdf > m_input_pdf;
@@ -52,7 +62,7 @@ public:
 	// store input PDF handles here
 	map< string, InputPdfIndex > m_input_pdf_index;
 
-	bool add_reader( InputPdf* input_pdf_p );
+	bool add_reader( InputPdf* input_pdf_p, bool keep_artifacts_b );
 	bool open_input_pdf_readers();
 
 	vector< string > m_input_attach_file_filename;
@@ -83,7 +93,9 @@ public:
 		update_info_k,
 		update_xmp_k,
 		background_k, // promoted from output option to operation in pdftk 1.10
+		multibackground_k, // feature added by Bernhard R. Link <brlink@debian.org>, Johann Felix Soden <johfel@gmx.de>
 		stamp_k,
+		multistamp_k, // feature added by Bernhard R. Link <brlink@debian.org>, Johann Felix Soden <johfel@gmx.de>
 
 		// optional attach_file argument
 		attach_file_to_page_k,
@@ -135,11 +147,6 @@ public:
 
   keyword m_operation;
 
-  typedef unsigned long PageNumber;
-
-	typedef enum { NORTH= 0, EAST= 90, SOUTH= 180, WEST= 270 } PageRotate; // DF rotation
-	typedef bool PageRotateAbsolute; // DF absolute / relative rotation
-
   struct PageRef {
 		InputPdfIndex m_input_pdf_index;
     PageNumber m_page_num; // 1-based
@@ -161,6 +168,8 @@ public:
 	string m_output_owner_pw;
 	string m_output_user_pw;
 	jint m_output_user_perms;
+	bool m_multistamp_b; // use all pages of input stamp PDF, not just the first
+	bool m_multibackground_b; // use all pages of input background PDF, not just the first
 	bool m_output_uncompress_b;
 	bool m_output_compress_b;
 	bool m_output_flatten_b;
@@ -190,7 +199,7 @@ public:
 	void unpack_files
 	( itext::PdfReader* input_reader_p );
 
-	void create_output();
+	int create_output();
 
 private:
 	enum ArgState {

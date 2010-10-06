@@ -20,7 +20,8 @@ SYNOPSIS
        Where:
 	    <operation> may be empty, or:
 	    [cat | attach_files | unpack_files | burst |
-	     fill_form | background | stamp | generate_fdf
+	     fill_form | background | stamp | generate_fdf |
+	     multibackground | multistamp |
 	     dump_data | dump_data_fields | update_info]
 
        For Complete Help: pdftk --help
@@ -90,9 +91,9 @@ OPTIONS
 	      tion and compression.
 
 	      Available   operations  are:  cat,  attach_files,  unpack_files,
-	      burst,	 fill_form,	background,	stamp,	    dump_data,
-	      dump_data_fields,  generate_fdf,	update_info.  Some  operations
-	      takes additional arguments, described below.
+	      burst, fill_form,  background,  stamp,  multibackground,	multi-
+	      stamp,  dump_data,  dump_data_fields, generate_fdf, update_info.
+	      Some operations takes additional arguments, described below.
 
 	  cat [<page ranges>]
 		 Catenates pages from input PDFs to create a  new  PDF.   Page
@@ -105,24 +106,24 @@ OPTIONS
 		 Where	the  handle identifies one of the input PDF files, and
 		 the beginning and ending page numbers	are  one-based	refer-
 		 ences to pages in the PDF file, and the qualifier can be even
-		 or odd, and the page rotation can be N, S, E, W, L, R, or  D.
+		 or odd, and the page rotation can be N, S, E, W, L, R, or D.
 
-		 If  the handle is omitted from the page range, then the pages
+		 If the handle is omitted from the page range, then the  pages
 		 are taken from the first input PDF.
 
 		 The even qualifier causes pdftk to use only the even-numbered
-		 PDF  pages, so 1-6even yields pages 2, 4 and 6 in that order.
+		 PDF pages, so 1-6even yields pages 2, 4 and 6 in that	order.
 		 6-1even yields pages 6, 4 and 2 in that order.
 
 		 The odd qualifier works similarly to the even.
 
 		 The page rotation setting can cause pdftk to rotate pages and
 		 documents.  Each option sets the page rotation as follows (in
-		 degrees): N: 0, E: 90, S: 180, W: 270, L:  -90,  R:  +90,  D:
+		 degrees):  N:	0,  E:	90, S: 180, W: 270, L: -90, R: +90, D:
 		 +180. L, R, and D make relative adjustments to a page's rota-
 		 tion.
 
-		 If no arguments are passed to cat, then  pdftk  combines  all
+		 If  no  arguments  are passed to cat, then pdftk combines all
 		 input PDFs in the order they were given to create the output.
 
 		 NOTES:
@@ -130,7 +131,7 @@ OPTIONS
 		 * The keyword end may be used to reference the final page  of
 		   a document instead of a page number.
 		 * Reference a single page by omitting the ending page number.
-		 * The handle may be used alone to represent  the  entire  PDF
+		 *  The  handle  may be used alone to represent the entire PDF
 		   document, e.g., B1-end is the same as B.
 
 		 Page Range Examples w/o Handles:
@@ -147,12 +148,11 @@ OPTIONS
 		 A1-21 Beven A72
 		 AW - rotate entire document 90 degrees
 		 B
-		 A2-30evenL  -	take  the even pages from the range, remove 90
+		 A2-30evenL - take the even pages from the  range,  remove  90
 		 degrees from each page's rotation
 		 A A
 		 AevenW AoddE
 		 AW BW BD
-
 	  attach_files <attachment filenames | PROMPT> [to_page <page number |
 	  PROMPT>]
 		 Packs arbitrary files into a PDF using PDF's file  attachment
@@ -236,11 +236,25 @@ OPTIONS
 		 as  a	PDF  created from page scans) then the resulting back-
 		 ground won't be visible -- use the stamp feature instead.
 
+	  multibackground <background PDF filename | - | PROMPT>
+		 Same as the background feature, but applies each page of  the
+		 background  PDF  to  the corresponding page of the input PDF.
+		 If the input PDF has more pages than the stamp PDF, then  the
+		 final	stamp page is repeated across these remaining pages in
+		 the input PDF.
+
 	  stamp <stamp PDF filename | - | PROMPT>
 		 This behaves just like the background feature except it over-
 		 lays  the  stamp  PDF page on top of the input PDF document's
 		 pages.  This works best if the stamp PDF page has a transpar-
 		 ent background.
+
+	  multistamp <stamp PDF filename | - | PROMPT>
+		 Same as the stamp feature, but applies each page of the back-
+		 ground PDF to the corresponding page of the  input  PDF.   If
+		 the  input  PDF  has  more pages than the stamp PDF, then the
+		 final stamp page is repeated across these remaining pages  in
+		 the input PDF.
 
 	  dump_data
 		 Reads	a  single,  input PDF file and reports various statis-
@@ -370,6 +384,8 @@ OPTIONS
 	      its output without notice.
 
 EXAMPLES
+
+
        Decrypt a PDF
 	 pdftk secured.pdf input_pw foopass output unsecured.pdf
 
@@ -377,7 +393,7 @@ EXAMPLES
        missions (the default)
 	 pdftk 1.pdf output 1.128.pdf owner_pw foopass
 
-       Same as above, except password 'baz' must also be used to  open	output
+       Same  as  above, except password 'baz' must also be used to open output
        PDF
 	 pdftk 1.pdf output 1.128.pdf owner_pw foo user_pw baz
 
@@ -400,7 +416,7 @@ EXAMPLES
        default). Set the owner PW to 'foopass'.
 	 pdftk 1.pdf 2.pdf cat output 3.pdf encrypt_40bit owner_pw foopass
 
-       Join two files, one of which requires the password 'foopass'. The  out-
+       Join  two files, one of which requires the password 'foopass'. The out-
        put is not encrypted.
 	 pdftk A=secured.pdf 2.pdf input_pw A=foopass cat output 3.pdf
 
@@ -411,7 +427,7 @@ EXAMPLES
        Repair a PDF's corrupted XREF table and stream lengths, if possible
 	 pdftk broken.pdf output fixed.pdf
 
-       Burst  a  single  PDF  document	into  pages  and  dump	its  data   to
+       Burst   a  single  PDF  document  into  pages  and  dump  its  data  to
        doc_data.txt
 	 pdftk in.pdf burst
 
@@ -429,16 +445,15 @@ EXAMPLES
 	 pdftk in.pdf cat 1-endS output out.pdf
 
 NOTES
-       pdftk	uses	a    slightly	 modified    iText    Java     library
-       (http://itextpdf.sourceforge.net/)  to  read  and write PDF. The author
-       compiled this Java library using GCJ (http://gcc.gnu.org) so  it  could
-       be linked with a front end written in C++.
-
-       The pdftk home page is http://www.accesspdf.com/pdftk/.
+       The pdftk home page permalink is:
+       http://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/
+       The easy-to-remember shortcut is: www.pdftk.com
 
 AUTHOR
-       Sid Steward (ssteward@accesspdf.com) maintains pdftk.
+       Sid  Steward  (sid.steward at pdflabs dot com) maintains pdftk.	Please
+       email him with questions or bug reports.  Include pdftk in the  subject
+       line to ensure successful delivery.  Thank you.
 
 
 
-			      September 18, 2006		      PDFTK(1)
+			      September 15, 2010		      PDFTK(1)
