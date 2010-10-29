@@ -29,15 +29,18 @@
 
 void
 ReportAcroFormFields( ostream& ofs,
-											itext::PdfReader* reader_p );
+											itext::PdfReader* reader_p,
+											bool utf8_b );
 
 void
 ReportOnPdf( ostream& ofs,
-						 itext::PdfReader* reader_p );
+						 itext::PdfReader* reader_p,
+						 bool utf8_b );
 
 bool
 UpdateInfo( itext::PdfReader* reader_p,
-						istream& ifs );
+						istream& ifs,
+						bool utf8_b );
 
 /* not fully implemented, yet
 

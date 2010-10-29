@@ -402,12 +402,11 @@ unpack_file( itext::PdfReader* input_reader_p,
 						// patch tweaked by Sid Steward:
 						// toString() doesn't ensure conversion from internal encoding (e.g., Y+diaeresis)
 						jstring fn_str = fn_p->toUnicodeString();
-						int fn_str_len = JvGetStringUTFLength( fn_str );
-						char fn_buf[ fn_str_len ]; // fn_buf not a C string, not NULL terminated
-						JvGetStringUTFRegion( fn_str, 0, fn_str->length() , fn_buf );
-
-						string fn= 
-							drop_path( string( fn_buf, fn_str_len ) );
+						int fn_buff_len = JvGetStringUTFLength( fn_str );
+						char* fn_buff= (char*)malloc( fn_buff_len* sizeof(char) ); // fn_buff not a C string, not NULL terminated
+						JvGetStringUTFRegion( fn_str, 0, fn_str->length(), fn_buff );
+						string fn= drop_path( string( fn_buff, fn_buff_len ) );
+						free( fn_buff );
 
 						// did the user supply a path?
 						if( !output_pathname.empty() ) { // prepend it

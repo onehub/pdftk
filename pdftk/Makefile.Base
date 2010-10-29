@@ -14,7 +14,7 @@
 # platform-specific makefiles, e.g.: Makefile.Debian
 #
 
-export JAVALIBPATH= ../java_libs_lgpl
+export JAVALIBPATH= ../java
 
 JAVALIB= $(JAVALIBPATH)/java_lib.o
 
@@ -27,7 +27,7 @@ endif
 # this must already be set according to your platform Makefile;
 # we're just appending to it, here
 #
-CPPFLAGS+= -DPDFTK_VER=\"1.43\"
+CPPFLAGS+= -DPDFTK_VER=\"1.44\"
 
 all : javalib pdftk
 

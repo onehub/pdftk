@@ -69,6 +69,7 @@ public:
 	jint m_input_attach_file_pagenum;
 
 	string m_update_info_filename;
+	bool m_update_info_utf8_b;
 	string m_update_xmp_filename;
 
   enum keyword {
@@ -76,10 +77,14 @@ public:
 
     // the operations
     cat_k, // combine pages from input PDFs into a single output
+		shuffle_k, // like cat, but interleaves pages from input ranges
 		burst_k, // split a single, input PDF into individual pages
+		barcode_burst_k, // barcode_burst project
 		filter_k, // apply 'filters' to a single, input PDF based on output args
 		dump_data_k, // no PDF output
+		dump_data_utf8_k,
 		dump_data_fields_k,
+		dump_data_fields_utf8_k,
 		generate_fdf_k,
 		unpack_files_k, // unpack files from input; no PDF output
 		//
@@ -91,6 +96,7 @@ public:
 		fill_form_k, // read FDF file and fill PDF form fields
 		attach_file_k, // attach files to output
 		update_info_k,
+		update_info_utf8_k, // if info isn't utf-8, it is encoded using xml entities
 		update_xmp_k,
 		background_k, // promoted from output option to operation in pdftk 1.10
 		multibackground_k, // feature added by Bernhard R. Link <brlink@debian.org>, Johann Felix Soden <johfel@gmx.de>
@@ -159,12 +165,13 @@ public:
 			m_page_rot( page_rot ),
 			m_page_abs( page_abs ) {}
   };
-  vector< PageRef > m_page_seq;
+  vector< vector< PageRef > > m_page_seq; // one vector for each given page range
 
 	string m_form_data_filename;
 	string m_background_filename;
 	string m_stamp_filename;
   string m_output_filename;
+	bool m_output_utf8_b;
 	string m_output_owner_pw;
 	string m_output_user_pw;
 	jint m_output_user_perms;
@@ -199,6 +206,7 @@ public:
 	void unpack_files
 	( itext::PdfReader* input_reader_p );
 
+	int create_output_page( itext::PdfCopy*, PageRef, int );
 	int create_output();
 
 private:

@@ -1,4 +1,4 @@
 create text version from html using html2text:
-html2text changelog.html > changelog.txt
+html2text -ascii changelog.html > changelog.txt
 for Windows compatibility:
 todos changelog.txt

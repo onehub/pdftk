@@ -74,7 +74,10 @@ export RMFLAGS= -vf
 export CPPFLAGS= -DPATH_DELIM=0x5c -DASK_ABOUT_WARNINGS=false -fdollars-in-identifiers
 export CXXFLAGS= -Wall -Wextra -Weffc++ -O2
 export GCJFLAGS= -O2
-#export GCJHFLAGS= -force
-export LDLIBS= -lgcj -lws2_32 -liconv
+# added -nostdlib to track dependencies
+#export LDLIBS= -lgcj -lws2_32 -liconv
+export LDLIBS= c:/mingw-3.4.5/lib/crt2.o -nostdlib -lgcj -lws2_32 -liconv -luser32 -ladvapi32 -lmingw32 -lstdc++ -lgcc -lmoldname -lmingwex -lkernel32 -lmsvcrt
+
+
 
 include Makefile.Base

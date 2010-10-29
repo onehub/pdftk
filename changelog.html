@@ -1,6 +1,18 @@
 <html>
 <body>
 <ul>
+
+<li><p>1.44 - October 28, 2010</p>
+<ul>
+<li><p>Added new feature for collating PDF page scans: <tt>shuffle</tt>.  Please see the man page for usage details.</p></li>
+<li><p>Introduced <tt>update_info_utf8</tt>, <tt>dump_data_utf8</tt> and <tt>dump_data_fields_utf8</tt> to provide UTF-8 companions to <tt>update_info</tt>, <tt>dump_data</tt> and <tt>dump_data_fields</tt>.  These latter operations use XML numerical entities to encode non-ASCII characters.  In version 1.43, we changed the encoding for <tt>update_info</tt> to UTF-8, but that made it incompatible with <tt>dump_data</tt> and also broke some downstream applications.  By introducing these UTF-8 operations, we can revert <tt>update_info</tt> to its original behavior.</p></li>
+<li><p><tt>Burst</tt> feature now copies the metadata (including XMP) from the input file to the output pages.</p></li>
+<li><p>Updated Bouncy Castle library to 1.45.</p></li>
+<li><p>Removed or replaced third-party code that wasn't compatible with pdftk's GPL license.</p></li>
+<li><p>Updated third-party license information.</p></li>
+</ul>
+</li>
+
 <li><p>1.43 - September 30, 2010</p>
 <ul>
 <li><p>Improved input handle detection to reduce false hits.</p></li>
@@ -19,6 +31,8 @@
 <li><p>Updated build procedure to work better with newer versions of GCC.  Maintained compatibility with older versions of GCC.</p></li>
 <li><p>Added license information to the source tree for the third-party libraries that pdftk uses.</p></li>
 </ul>
+</li>
+
 <li><p>1.41 - November 28, 2006</p>
 <ul>
 <li><p>Fixed a bug that corrupted output PDF xref tables.  This corruption was mild but universal.  Most PDF tools can cope with the corrupted PDFs, but I recommend upgrading from 1.40 to 1.41 as soon as possible.  This bug was introduced in version 1.40 &mdash; version 1.12 does not have this bug.</p></li>
