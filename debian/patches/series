@@ -1,5 +1,1 @@
-pdftk-use-internal-itext
 build_with_gcc-4.3
-use_created_java_lib_dir
-set_classpath
-support_compression
