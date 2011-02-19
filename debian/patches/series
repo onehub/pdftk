@@ -16,3 +16,4 @@ improve_error_message_on_invalid_pdf
 fix_return_code
 fix_random_owner_pw
 fix_double_pw_prompt_bug
+backport_keyword_starting_filenames
