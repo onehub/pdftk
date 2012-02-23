@@ -2,3 +2,4 @@ customise_build_parameters
 fix_double_pw_prompt_bug
 drm_fix
 fix_infinite_loop_on_lf_eol
+fix_pdfwriter_nullpointerexception
