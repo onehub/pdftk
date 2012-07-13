@@ -29,12 +29,12 @@
 # tools
 # need direct path to libgcj for gcjh (starting in gcj 4.1.2 per Aurélien GÉRÔME)
 TOOLPATH=
-export VERSUFF=-4.4
-export CXX= $(TOOLPATH)g++$(VERSUFF)
-export GCJ= $(TOOLPATH)gcj$(VERSUFF)
-export GCJH= $(TOOLPATH)gcjh$(VERSUFF)
-export GJAR= $(TOOLPATH)gjar$(VERSUFF)
-export LIBGCJ= /usr/share/java/libgcj$(VERSUFF).jar
+export VERSUFF='-4.4'
+export CXX= $(TOOLPATH)g++
+export GCJ= $(TOOLPATH)gcj
+export GCJH= $(TOOLPATH)gcjh
+export GJAR= $(TOOLPATH)gjar
+export LIBGCJ= /usr/share/java/libgcj-4.4.jar
 export AR= ar
 export RM= rm
 export ARFLAGS= rs
