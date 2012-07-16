@@ -1431,7 +1431,7 @@ public class PdfReader {
                         tokens.backOnePosition(ch);
 					*/
 					// ssteward
-					while (ch != '\n')
+					while (ch != '\n' && ch != -1)   // must check for EOF, otherwise we can go on indefinitely bmoran@onehub.com 2012-07-16
 						ch = tokens.read();
 
                     PRStream stream = new PRStream(this, tokens.getFilePointer());
